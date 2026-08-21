@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTransactionFlag } from '../hooks/useTransactionFlag';
 import { useTransactions } from '../hooks/useTransactions';
 import { useTransactionSummary } from '../hooks/useTransactionSummary';
 import CategoryBreakdown from './CategoryBreakdown';
@@ -32,8 +33,20 @@ export default function App() {
     const [perPage, setPerPage] = useState(DEFAULT_PER_PAGE);
     const transactions = useTransactions(filters, sort, page, perPage);
     const summary = useTransactionSummary(filters);
+    const flag = useTransactionFlag();
+
+    /**
+     * Anything that moves the table to a different slice of the results also
+     * drops the flag overrides: they describe the rows on screen, and the request
+     * that follows brings the server's own values for whatever replaces them.
+     */
+    const showSlice = (change) => (value) => {
+        flag.reset();
+        change(value);
+    };
 
     const applyFilters = (applied) => {
+        flag.reset();
         setFilters(applied);
         setPage(1);
     };
@@ -47,6 +60,7 @@ export default function App() {
     const changePerPage = (nextPerPage) => {
         const total = transactions.meta?.total ?? 0;
 
+        flag.reset();
         setPerPage(nextPerPage);
         setPage((current) => Math.min(current, Math.max(1, Math.ceil(total / nextPerPage))));
     };
@@ -79,12 +93,14 @@ export default function App() {
                         error={transactions.error}
                         onRetry={transactions.reload}
                         sort={sort}
-                        onSortChange={setSort}
+                        onSortChange={showSlice(setSort)}
                         page={page}
                         pageCount={transactions.meta?.last_page}
                         perPage={perPage}
-                        onPageChange={setPage}
+                        onPageChange={showSlice(setPage)}
                         onPerPageChange={changePerPage}
+                        flags={flag.flags}
+                        onToggleFlag={flag.toggleFlag}
                     />
                 </div>
             </div>

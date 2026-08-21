@@ -5,7 +5,7 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 import ErrorState from './ui/ErrorState';
 import Select from './ui/Select';
-import { ArrowDownIcon, ArrowUpIcon, FlagIcon, SortIcon } from './ui/icons';
+import { AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon, FlagIcon, SortIcon } from './ui/icons';
 
 /** Mirrors `TransactionSort` — the two columns the listing endpoint can order by. */
 export const DEFAULT_SORT = { column: 'occurred_at', direction: 'desc' };
@@ -45,20 +45,23 @@ const STATUS_VARIANTS = {
  * `page`/`pageCount`/`perPage` come from its `meta`.
  *
  * The sort headers act through `onSortChange`, and the footer controls through
- * `onPageChange` and `onPerPageChange`. The flag toggles are still rendered in
- * their final form but carry no handler yet, so the markup will not have to
- * change when that lands. `sort`, `page` and `perPage` default to what the
- * endpoint does when it is not asked, so the chrome describes the page actually
- * being shown.
+ * `onPageChange` and `onPerPageChange`. The flag toggles act through
+ * `onToggleFlag`, and read their state from `flags` when that map holds an entry
+ * for the row — the write in progress, or the one that failed, belongs to the
+ * caller driving the request, not to the response the row was rendered from.
+ * `sort`, `page` and `perPage` default to what the endpoint does when it is not
+ * asked, so the chrome describes the page actually being shown.
  *
  * The rows scroll at a fixed height instead of growing the card, which keeps the
  * dashboard the same size whatever the filters match — and keeps the footer in
  * one place rather than sliding up the page as rows drop out.
  *
  * A failed request takes over the scrolling area: the headers go with the rows,
- * because sorting a page that never arrived is not something to offer.
+ * because sorting a page that never arrived is not something to offer. A failed
+ * *flag* does not: the rest of the page is still good, so that failure stays in
+ * the cell whose click caused it.
  *
- * @param {{ transactions?: Array<object>, loading?: boolean, error?: string|boolean, onRetry?: () => void, onSortChange?: (sort: typeof DEFAULT_SORT) => void, onPageChange?: (page: number) => void, onPerPageChange?: (perPage: number) => void, sort?: typeof DEFAULT_SORT, page?: number, pageCount?: number, perPage?: number, className?: string }} props
+ * @param {{ transactions?: Array<object>, loading?: boolean, error?: string|boolean, onRetry?: () => void, onSortChange?: (sort: typeof DEFAULT_SORT) => void, onPageChange?: (page: number) => void, onPerPageChange?: (perPage: number) => void, onToggleFlag?: (id: number, next: boolean, previous: boolean) => void, flags?: Record<number, { flagged: boolean, pending: boolean, error: string|null }>, sort?: typeof DEFAULT_SORT, page?: number, pageCount?: number, perPage?: number, className?: string }} props
  */
 export default function TransactionsTable({
     transactions = [],
@@ -68,6 +71,8 @@ export default function TransactionsTable({
     onSortChange,
     onPageChange,
     onPerPageChange,
+    onToggleFlag,
+    flags = {},
     sort = DEFAULT_SORT,
     page = 1,
     pageCount = 1,
@@ -128,7 +133,12 @@ export default function TransactionsTable({
                                 </tr>
                             ) : (
                                 transactions.map((transaction) => (
-                                    <TransactionRow key={transaction.id} {...transaction} />
+                                    <TransactionRow
+                                        key={transaction.id}
+                                        {...transaction}
+                                        {...flags[transaction.id]}
+                                        onToggleFlag={onToggleFlag}
+                                    />
                                 ))
                             )}
                         </tbody>
@@ -201,9 +211,24 @@ function SortableHeader({ label, column, sort, onSortChange, align = 'left' }) {
  * A single transaction. The merchant carries the weight because it is what the
  * eye scans for; everything else is set back so the column reads as one line.
  *
- * @param {{ occurred_at: string, merchant: string, category: string, amount: number, status: string, flagged: boolean }} props
+ * `flagged` is whatever the row should show now — the value from the response
+ * until a toggle overrides it, and the optimistic or reverted one after — so
+ * `aria-pressed` and the label follow the pennant without knowing which it is.
+ *
+ * @param {{ id: number, occurred_at: string, merchant: string, category: string, amount: number, status: string, flagged: boolean, pending?: boolean, error?: string|null, onToggleFlag?: (id: number, next: boolean, previous: boolean) => void }} props
  */
-function TransactionRow({ occurred_at: occurredAt, merchant, category, amount, status, flagged }) {
+function TransactionRow({
+    id,
+    occurred_at: occurredAt,
+    merchant,
+    category,
+    amount,
+    status,
+    flagged,
+    pending = false,
+    error = null,
+    onToggleFlag,
+}) {
     return (
         <tr className="hover:bg-gray-50">
             <td className={cn(BODY_CELL, 'text-gray-500')}>{formatDate(occurredAt)}</td>
@@ -218,20 +243,69 @@ function TransactionRow({ occurred_at: occurredAt, merchant, category, amount, s
                 <Badge variant={STATUS_VARIANTS[status]}>{status}</Badge>
             </td>
             <td className={cn(BODY_CELL, 'text-right')}>
-                {/* TODO: PATCH the flag through `onToggleFlag` when the flag action lands. */}
-                <button
-                    type="button"
-                    aria-pressed={flagged}
-                    aria-label={flagged ? `Unflag ${merchant}` : `Flag ${merchant}`}
-                    className={cn(
-                        'rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900',
-                        flagged ? 'text-gray-900' : 'text-gray-300 hover:text-gray-500',
-                    )}
-                >
-                    <FlagIcon filled={flagged} />
-                </button>
+                <FlagToggle
+                    merchant={merchant}
+                    flagged={flagged}
+                    pending={pending}
+                    error={error}
+                    onToggle={() => onToggleFlag?.(id, !flagged, flagged)}
+                    disabled={pending || !onToggleFlag}
+                />
             </td>
         </tr>
+    );
+}
+
+/**
+ * The flag itself, in whichever of its states the row is in.
+ *
+ * While the write is in flight the pennant already shows the value being written
+ * — the click is the feedback, not the response — and the control only fades and
+ * stops taking a second click.
+ *
+ * A failed write has put the pennant back to what the server still holds, so the
+ * state has to say so itself: the control turns red and grows a warning beside
+ * it, with the reason on hover and in a live region, because colour alone would
+ * not reach everyone. It stays until it is acted on rather than fading on a
+ * timer, and the retry is the toggle itself — pressing it again clears the error
+ * and sends the write once more, so a failure adds no new control to the row.
+ *
+ * @param {{ merchant: string, flagged: boolean, pending: boolean, error: string|null, onToggle: () => void, disabled: boolean }} props
+ */
+function FlagToggle({ merchant, flagged, pending, error, onToggle, disabled }) {
+    // The revert has already put `flagged` back, so the action that failed is the
+    // one it is not currently in.
+    const failure = error && `Couldn't ${flagged ? 'unflag' : 'flag'} ${merchant}. ${error}`;
+
+    return (
+        <span className="inline-flex items-center gap-1">
+            <button
+                type="button"
+                onClick={onToggle}
+                disabled={disabled}
+                aria-pressed={flagged}
+                aria-busy={pending || undefined}
+                aria-label={flagged ? `Unflag ${merchant}` : `Flag ${merchant}`}
+                title={failure || undefined}
+                className={cn(
+                    'rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900',
+                    flagged ? 'text-gray-900' : 'text-gray-300 hover:text-gray-500',
+                    error && 'text-red-500 hover:text-red-600',
+                    pending && 'cursor-wait opacity-60',
+                )}
+            >
+                <FlagIcon filled={flagged} />
+            </button>
+
+            {error ? (
+                <>
+                    <AlertTriangleIcon className="size-3 shrink-0 text-red-500" />
+                    <span role="status" className="sr-only">
+                        {failure}
+                    </span>
+                </>
+            ) : null}
+        </span>
     );
 }
 

@@ -24,3 +24,19 @@ export async function api(url, options = {}) {
 
     return body;
 }
+
+/**
+ * What to put in front of the user when a request fails.
+ *
+ * An error carrying a `status` came back from the application, so its message
+ * was written for this API and is worth showing. One without never reached it —
+ * the network was down, the server was not listening — and its message is the
+ * browser's ("Failed to fetch"), which describes the machinery rather than the
+ * situation.
+ *
+ * @param {Error & { status?: number }} error
+ * @returns {string}
+ */
+export function errorMessage(error) {
+    return error.status ? error.message : 'Could not reach the server.';
+}

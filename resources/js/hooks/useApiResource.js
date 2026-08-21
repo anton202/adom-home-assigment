@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { api, errorMessage } from '../lib/api';
 
 /**
  * A GET request as component state: the response body, whether it is in flight,
@@ -38,7 +38,7 @@ export function useApiResource(url) {
 
                 // TODO: a 422 carries per-field messages in `error.body.errors`;
                 // surface those on the offending filter rather than as a panel error.
-                setState({ data: null, loading: false, error: messageFor(error) });
+                setState({ data: null, loading: false, error: errorMessage(error) });
             });
 
         return () => controller.abort();
@@ -55,19 +55,3 @@ export function useApiResource(url) {
  * filters.
  */
 const PENDING = { data: null, loading: true, error: null };
-
-/**
- * What to put in front of the user when a request fails.
- *
- * An error carrying a `status` came back from the application, so its message
- * was written for this API and is worth showing. One without never reached it —
- * the network was down, the server was not listening — and its message is the
- * browser's ("Failed to fetch"), which describes the machinery rather than the
- * situation.
- *
- * @param {Error & { status?: number }} error
- * @returns {string}
- */
-function messageFor(error) {
-    return error.status ? error.message : 'Could not reach the server.';
-}
