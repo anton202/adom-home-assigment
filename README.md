@@ -37,6 +37,17 @@ with `history.replaceState` — which would also make back/forward and a bookmar
 work as expected. The API already takes exactly these parameters, so the URL and the
 request would use the same names.
 
+### TODO: put the categories endpoint behind the same layers
+
+`CategoryController` is boilerplate I left as it was found, and it is now the one
+controller that queries Eloquent directly instead of going through the repository and
+service the transaction endpoints use. With more time I'd add `distinctCategories()` to
+`TransactionRepositoryInterface` and reach it through `TransactionService`, keeping the
+single-action controller as it is — it is its own resource, so it does not belong on
+`TransactionController`. I'd also settle whether it should return the categories present
+in the data or `Transaction::CATEGORIES`: the two diverge as soon as a valid category has
+no rows, and the filter would then be missing an option the API still accepts.
+
 ### TODO: return DTOs from the transaction repository
 
 `App\Repositories\EloquentTransactionRepository` still hands Eloquent models to the layers
