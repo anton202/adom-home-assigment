@@ -8,7 +8,7 @@ import Select from './ui/Select';
 import { ArrowDownIcon, ArrowUpIcon, FlagIcon, SortIcon } from './ui/icons';
 
 /** Mirrors `TransactionSort` — the two columns the listing endpoint can order by. */
-const DEFAULT_SORT = { column: 'occurred_at', direction: 'desc' };
+export const DEFAULT_SORT = { column: 'occurred_at', direction: 'desc' };
 
 /** Mirrors `IndexTransactionRequest::MAX_PER_PAGE`, which caps the page size at 100. */
 const PER_PAGE_OPTIONS = [
@@ -41,10 +41,11 @@ const STATUS_VARIANTS = {
  * keyed like the `data` array of the `GET /api/transactions` response, and
  * `page`/`pageCount`/`perPage` come from its `meta`.
  *
- * The sort headers, the flag toggles and the page size select are rendered in
- * their final form but carry no handlers yet, so the markup will not have to
- * change when those land. `sort` defaults to what the endpoint sorts by when it
- * is not asked, so the headers describe the page actually being shown.
+ * The sort headers act, through `onSortChange`. The flag toggles and the page
+ * size select are still rendered in their final form but carry no handlers yet,
+ * so the markup will not have to change when those land. `sort` defaults to what
+ * the endpoint sorts by when it is not asked, so the headers describe the page
+ * actually being shown.
  *
  * The rows scroll at a fixed height instead of growing the card, which keeps the
  * dashboard the same size whatever the filters match — and keeps the footer in
@@ -53,13 +54,14 @@ const STATUS_VARIANTS = {
  * A failed request takes over the scrolling area: the headers go with the rows,
  * because sorting a page that never arrived is not something to offer.
  *
- * @param {{ transactions?: Array<object>, loading?: boolean, error?: string|boolean, onRetry?: () => void, onPageChange?: (page: number) => void, onPerPageChange?: (perPage: number) => void, sort?: typeof DEFAULT_SORT, page?: number, pageCount?: number, perPage?: number, className?: string }} props
+ * @param {{ transactions?: Array<object>, loading?: boolean, error?: string|boolean, onRetry?: () => void, onSortChange?: (sort: typeof DEFAULT_SORT) => void, onPageChange?: (page: number) => void, onPerPageChange?: (perPage: number) => void, sort?: typeof DEFAULT_SORT, page?: number, pageCount?: number, perPage?: number, className?: string }} props
  */
 export default function TransactionsTable({
     transactions = [],
     loading = false,
     error = null,
     onRetry,
+    onSortChange,
     onPageChange,
     onPerPageChange,
     sort = DEFAULT_SORT,
@@ -84,14 +86,25 @@ export default function TransactionsTable({
                     <table className="w-full text-left text-sm">
                         <thead className="sticky top-0 z-10 bg-gray-50">
                             <tr>
-                                <SortableHeader label="Date" column="occurred_at" sort={sort} />
+                                <SortableHeader
+                                    label="Date"
+                                    column="occurred_at"
+                                    sort={sort}
+                                    onSortChange={onSortChange}
+                                />
                                 <th scope="col" className={cn(HEADER_CELL, 'w-full')}>
                                     Merchant
                                 </th>
                                 <th scope="col" className={HEADER_CELL}>
                                     Category
                                 </th>
-                                <SortableHeader label="Amount" column="amount" sort={sort} align="right" />
+                                <SortableHeader
+                                    label="Amount"
+                                    column="amount"
+                                    sort={sort}
+                                    onSortChange={onSortChange}
+                                    align="right"
+                                />
                                 <th scope="col" className={HEADER_CELL}>
                                     Status
                                 </th>
@@ -136,11 +149,18 @@ export default function TransactionsTable({
  * direction while the column is the one being sorted on, and the paired arrows
  * mark it as sortable while it is not.
  *
- * @param {{ label: string, column: string, sort: typeof DEFAULT_SORT, align?: 'left' | 'right' }} props
+ * Clicking the column already being sorted on flips its direction; clicking any
+ * other takes the sort over descending, because the newest dates and the largest
+ * amounts are what a first click is reaching for.
+ *
+ * @param {{ label: string, column: string, sort: typeof DEFAULT_SORT, onSortChange?: (sort: typeof DEFAULT_SORT) => void, align?: 'left' | 'right' }} props
  */
-function SortableHeader({ label, column, sort, align = 'left' }) {
+function SortableHeader({ label, column, sort, onSortChange, align = 'left' }) {
     const isSorted = sort.column === column;
     const isAscending = sort.direction === 'asc';
+
+    const handleClick = () =>
+        onSortChange?.({ column, direction: isSorted && !isAscending ? 'asc' : 'desc' });
 
     return (
         <th
@@ -148,11 +168,12 @@ function SortableHeader({ label, column, sort, align = 'left' }) {
             aria-sort={isSorted ? (isAscending ? 'ascending' : 'descending') : 'none'}
             className={cn(HEADER_CELL, align === 'right' && 'text-right')}
         >
-            {/* TODO: flip the direction on the sorted column, or switch to this one, via `onSortChange`. */}
             <button
                 type="button"
+                onClick={handleClick}
+                disabled={!onSortChange}
                 className={cn(
-                    'inline-flex items-center gap-1 rounded hover:text-gray-900',
+                    'inline-flex items-center gap-1 rounded enabled:hover:text-gray-900',
                     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900',
                 )}
             >

@@ -4,19 +4,25 @@ import { useTransactionSummary } from '../hooks/useTransactionSummary';
 import CategoryBreakdown from './CategoryBreakdown';
 import FiltersPanel, { EMPTY_FILTERS } from './FiltersPanel';
 import SummaryTiles from './SummaryTiles';
-import TransactionsTable from './TransactionsTable';
+import TransactionsTable, { DEFAULT_SORT } from './TransactionsTable';
 
 /**
- * The dashboard. It owns one piece of state — the filters the user has applied
- * — and both requests read from it, which is what keeps the table and the
- * summary describing the same set of transactions.
+ * The dashboard. It owns the filters the user has applied, and both requests
+ * read from them, which is what keeps the table and the summary describing the
+ * same set of transactions.
+ *
+ * It also owns the table's sort, kept apart from the filters rather than folded
+ * in with them: ordering is a view preference, so it survives a change of
+ * filters, and the summary — which aggregates, and so has no order — is not
+ * refetched when a column header is clicked.
  *
  * The two endpoints are fetched independently and so fail independently: a
  * failed summary leaves the table alone, and each panel carries its own retry.
  */
 export default function App() {
     const [filters, setFilters] = useState(EMPTY_FILTERS);
-    const transactions = useTransactions(filters);
+    const [sort, setSort] = useState(DEFAULT_SORT);
+    const transactions = useTransactions(filters, sort);
     const summary = useTransactionSummary(filters);
 
     return (
@@ -43,6 +49,8 @@ export default function App() {
                         loading={transactions.loading}
                         error={transactions.error}
                         onRetry={transactions.reload}
+                        sort={sort}
+                        onSortChange={setSort}
                         page={transactions.meta?.current_page}
                         pageCount={transactions.meta?.last_page}
                         perPage={transactions.meta?.per_page}
