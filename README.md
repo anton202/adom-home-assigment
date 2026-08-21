@@ -149,6 +149,21 @@ directory** (exclude `vendor/` and `node_modules/`).
 
 ## Implementation notes
 
+### Added JS dependencies
+
+Two utilities, both tiny and dependency-free — not a component framework:
+
+- **`clsx`** — conditional class composition.
+- **`tailwind-merge`** — resolves conflicting Tailwind utilities in favour of the last
+  one. The primitives in `resources/js/components/ui/` accept a `className` so callers
+  can adjust them at the call site; without a merge step an override like
+  `rounded-none` would just sit alongside the component's own `rounded-lg` and lose to
+  specificity order in the stylesheet. Hand-rolling that means reimplementing
+  Tailwind's conflict groups.
+
+They are combined in `resources/js/lib/cn.js`. Note `tailwind-merge` v3 is the line
+that understands Tailwind v4, which is what this project runs.
+
 ### TODO: return DTOs from the transaction repository
 
 `App\Repositories\EloquentTransactionRepository` still hands Eloquent models to the layers
