@@ -144,3 +144,27 @@ Authentication, deployment, responsive design, and visual polish. Don't spend ti
 
 Push to a private repo and share access, or send us a zip **including the `.git`
 directory** (exclude `vendor/` and `node_modules/`).
+
+---
+
+## Implementation notes
+
+### TODO: return DTOs from the transaction repository
+
+`App\Repositories\EloquentTransactionRepository` still hands Eloquent models to the layers
+above it in two places:
+
+- `paginate()` returns a `LengthAwarePaginator` of `Transaction` models.
+- `setFlagged()` returns the updated `Transaction`.
+
+The aggregate methods (`totals()`, `totalsByCategory()`) already cross that boundary as
+plain data, which the service maps into the `TransactionSummary` / `CategorySummary` DTOs.
+With more time I'd do the same for these two: add a `TransactionData` DTO, map to it inside
+the repository (via the paginator's `through()` for the listing), and point
+`TransactionResource` at the DTO instead of the model. That would keep Eloquent genuinely
+behind the repository contract — the service, controller and resource would depend on the
+shape of the data rather than on the ORM, so a different implementation of the contract
+wouldn't ripple upwards.
+
+I left it as it is here because `TransactionResource` is shared by the listing and the flag
+endpoint, so the change is only worth making in one pass across both paths.
