@@ -10,6 +10,55 @@ TODO is worth more than a rushed feature.
 
 ---
 
+## Implementation notes
+
+### Added JS dependencies
+
+Two utilities, both tiny and dependency-free — not a component framework:
+
+- **`clsx`** — conditional class composition.
+- **`tailwind-merge`** — resolves conflicting Tailwind utilities in favour of the last
+  one. The primitives in `resources/js/components/ui/` accept a `className` so callers
+  can adjust them at the call site; without a merge step an override like
+  `rounded-none` would just sit alongside the component's own `rounded-lg` and lose to
+  specificity order in the stylesheet. Hand-rolling that means reimplementing
+  Tailwind's conflict groups.
+
+They are combined in `resources/js/lib/cn.js`. Note `tailwind-merge` v3 is the line
+that understands Tailwind v4, which is what this project runs.
+
+### TODO: keep the view state in the URL
+
+The dashboard holds filters, sort, page and page size in React state in
+`resources/js/components/App.jsx`, so they live and die with the tab: a view can't be
+linked to a colleague, and a reload drops it. With more time I'd mirror that state into
+the query string — read the initial state from `location.search` and push each change
+with `history.replaceState` — which would also make back/forward and a bookmarked view
+work as expected. The API already takes exactly these parameters, so the URL and the
+request would use the same names.
+
+### TODO: return DTOs from the transaction repository
+
+`App\Repositories\EloquentTransactionRepository` still hands Eloquent models to the layers
+above it in two places:
+
+- `paginate()` returns a `LengthAwarePaginator` of `Transaction` models.
+- `setFlagged()` returns the updated `Transaction`.
+
+The aggregate methods (`totals()`, `totalsByCategory()`) already cross that boundary as
+plain data, which the service maps into the `TransactionSummary` / `CategorySummary` DTOs.
+With more time I'd do the same for these two: add a `TransactionData` DTO, map to it inside
+the repository (via the paginator's `through()` for the listing), and point
+`TransactionResource` at the DTO instead of the model. That would keep Eloquent genuinely
+behind the repository contract — the service, controller and resource would depend on the
+shape of the data rather than on the ORM, so a different implementation of the contract
+wouldn't ripple upwards.
+
+I left it as it is here because `TransactionResource` is shared by the listing and the flag
+endpoint, so the change is only worth making in one pass across both paths.
+
+---
+
 ## Requirements
 
 - PHP **8.3+**, Composer
@@ -144,42 +193,3 @@ Authentication, deployment, responsive design, and visual polish. Don't spend ti
 
 Push to a private repo and share access, or send us a zip **including the `.git`
 directory** (exclude `vendor/` and `node_modules/`).
-
----
-
-## Implementation notes
-
-### Added JS dependencies
-
-Two utilities, both tiny and dependency-free — not a component framework:
-
-- **`clsx`** — conditional class composition.
-- **`tailwind-merge`** — resolves conflicting Tailwind utilities in favour of the last
-  one. The primitives in `resources/js/components/ui/` accept a `className` so callers
-  can adjust them at the call site; without a merge step an override like
-  `rounded-none` would just sit alongside the component's own `rounded-lg` and lose to
-  specificity order in the stylesheet. Hand-rolling that means reimplementing
-  Tailwind's conflict groups.
-
-They are combined in `resources/js/lib/cn.js`. Note `tailwind-merge` v3 is the line
-that understands Tailwind v4, which is what this project runs.
-
-### TODO: return DTOs from the transaction repository
-
-`App\Repositories\EloquentTransactionRepository` still hands Eloquent models to the layers
-above it in two places:
-
-- `paginate()` returns a `LengthAwarePaginator` of `Transaction` models.
-- `setFlagged()` returns the updated `Transaction`.
-
-The aggregate methods (`totals()`, `totalsByCategory()`) already cross that boundary as
-plain data, which the service maps into the `TransactionSummary` / `CategorySummary` DTOs.
-With more time I'd do the same for these two: add a `TransactionData` DTO, map to it inside
-the repository (via the paginator's `through()` for the listing), and point
-`TransactionResource` at the DTO instead of the model. That would keep Eloquent genuinely
-behind the repository contract — the service, controller and resource would depend on the
-shape of the data rather than on the ORM, so a different implementation of the contract
-wouldn't ripple upwards.
-
-I left it as it is here because `TransactionResource` is shared by the listing and the flag
-endpoint, so the change is only worth making in one pass across both paths.
