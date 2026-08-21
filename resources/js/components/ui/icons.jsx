@@ -57,3 +57,77 @@ export function SlidersIcon({ className = 'size-4' }) {
         </svg>
     );
 }
+
+export function ArrowDownIcon({ className = 'size-4' }) {
+    return (
+        <svg
+            className={className}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            <path d="M12 5v14M19 12l-7 7-7-7" />
+        </svg>
+    );
+}
+
+export function ArrowUpIcon({ className = 'size-4' }) {
+    return (
+        <svg
+            className={className}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            <path d="M12 19V5M5 12l7-7 7 7" />
+        </svg>
+    );
+}
+
+/** The paired arrows a sortable column wears while it is not the one being sorted on. */
+export function SortIcon({ className = 'size-4' }) {
+    return (
+        <svg
+            className={className}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            <path d="M8 4v16M5 17l3 3 3-3M16 20V4M13 7l3-3 3 3" />
+        </svg>
+    );
+}
+
+/**
+ * One icon for both flag states — `filled` paints the pennant in, so a flagged
+ * row reads at a glance without swapping to a second glyph.
+ */
+export function FlagIcon({ filled = false, className = 'size-4' }) {
+    return (
+        <svg
+            className={className}
+            viewBox="0 0 24 24"
+            fill={filled ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+            <path d="M4 22v-7" />
+        </svg>
+    );
+}

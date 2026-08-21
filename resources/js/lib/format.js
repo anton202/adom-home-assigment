@@ -9,6 +9,8 @@ const CURRENCY = new Intl.NumberFormat('en-US', { style: 'currency', currency: '
 
 const COUNT = new Intl.NumberFormat('en-US');
 
+const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+
 /**
  * A monetary amount, e.g. `11662.4` → `$11,662.40`.
  *
@@ -37,4 +39,17 @@ export function formatCount(count) {
  */
 export function formatCategory(category) {
     return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+/**
+ * An ISO 8601 timestamp as a short date, e.g. `2026-08-18T09:14:00+00:00` → `Aug 18`.
+ *
+ * The year is left off because the dashboard shows a recent window and the column
+ * is scanned, not read; the full timestamp stays available in the `title` attribute.
+ *
+ * @param {string} isoString
+ * @returns {string}
+ */
+export function formatDate(isoString) {
+    return DATE.format(new Date(isoString));
 }

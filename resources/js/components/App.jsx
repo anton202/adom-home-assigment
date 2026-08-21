@@ -1,6 +1,7 @@
 import CategoryBreakdown from './CategoryBreakdown';
 import FiltersPanel from './FiltersPanel';
 import SummaryTiles from './SummaryTiles';
+import TransactionsTable from './TransactionsTable';
 
 export default function App() {
     return (
@@ -13,6 +14,7 @@ export default function App() {
                 </div>
                 <div className="flex flex-col gap-6">
                     <SummaryTiles />
+                    <TransactionsTable />
                 </div>
             </div>
         </div>
