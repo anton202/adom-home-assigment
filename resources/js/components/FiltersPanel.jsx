@@ -9,10 +9,11 @@ import TextInput from './ui/TextInput';
 import { SlidersIcon } from './ui/icons';
 
 /**
- * The draft the form edits. The keys are the query parameters
- * `TransactionFilterRequest` accepts, so the object can go to the API as-is.
+ * The draft the form edits, and the state the dashboard starts and resets to.
+ * The keys are the query parameters `TransactionFilterRequest` accepts, so the
+ * object can go to the API as-is.
  */
-const EMPTY_FILTERS = {
+export const EMPTY_FILTERS = {
     date_from: '',
     date_to: '',
     category: '',

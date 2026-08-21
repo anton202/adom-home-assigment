@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { useApiResource } from './useApiResource';
 import { formatCategory } from '../lib/format';
 
 /**
@@ -8,40 +7,17 @@ import { formatCategory } from '../lib/format';
  * The endpoint returns bare slugs (`groceries`); the label is built here so no
  * call site ever has to think about presenting a raw value.
  *
- * @returns {{ options: Array<{ value: string, label: string }>, loading: boolean, error: string|null }}
+ * @returns {{ options: Array<{ value: string, label: string }>, loading: boolean, error: string|null, reload: () => void }}
  */
 export function useCategories() {
-    const [options, setOptions] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const { data, loading, error, reload } = useApiResource('/api/categories');
 
-    useEffect(() => {
-        let cancelled = false;
-
-        api('/api/categories')
-            .then((response) => {
-                if (cancelled) {
-                    return;
-                }
-
-                setOptions(response.data.map(toOption));
-                setLoading(false);
-            })
-            .catch((err) => {
-                if (cancelled) {
-                    return;
-                }
-
-                setError(err.message);
-                setLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    return { options, loading, error };
+    return {
+        options: (data?.data ?? []).map(toOption),
+        loading,
+        error,
+        reload,
+    };
 }
 
 /**

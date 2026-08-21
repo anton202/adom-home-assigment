@@ -3,24 +3,6 @@ import { formatCategory, formatCount, formatCurrency } from '../lib/format';
 import Card from './ui/Card';
 import ErrorState from './ui/ErrorState';
 
-/**
- * Stands in until the summary hook lands. Keyed exactly like the `by_category`
- * array of the `GET /api/transactions/summary` response, so wiring the real
- * figures up is a matter of passing `breakdown` — the rows below never change.
- *
- * The counts and amounts add up to the `SummaryTiles` mock (237 · $11,662.40),
- * so the two panels tell the same story while both are running on mock data.
- */
-const MOCK_BREAKDOWN = [
-    { category: 'groceries', count: 61, total_amount: 4120.55 },
-    { category: 'travel', count: 38, total_amount: 2880.1 },
-    { category: 'utilities', count: 33, total_amount: 1940.0 },
-    { category: 'dining', count: 29, total_amount: 1405.75 },
-    { category: 'shopping', count: 41, total_amount: 832.4 },
-    { category: 'health', count: 21, total_amount: 305.6 },
-    { category: 'entertainment', count: 14, total_amount: 178.0 },
-];
-
 /** The scroll height of the list, and of the placeholder that stands in for it. */
 const LIST_HEIGHT = 'h-56';
 
@@ -36,18 +18,16 @@ const SKELETON_ROWS = 6;
  * asking the endpoint for a second ordering.
  *
  * The list scrolls at a fixed height instead of growing the card, which keeps
- * the panel the same size whatever the filters match:
- *
- *     <CategoryBreakdown breakdown={summary.by_category} loading={summary.loading} />
+ * the panel the same size whatever the filters match.
  *
  * This panel carries the retry for the summary request. The tiles above it are
  * fed by the same endpoint, so putting a Retry button on each of them would ask
  * the user to choose between three buttons that all do the same thing.
  *
- * @param {{ breakdown?: typeof MOCK_BREAKDOWN, loading?: boolean, error?: string|boolean, onRetry?: () => void, className?: string }} props
+ * @param {{ breakdown?: Array<{ category: string, count: number, total_amount: number }>, loading?: boolean, error?: string|boolean, onRetry?: () => void, className?: string }} props
  */
 export default function CategoryBreakdown({
-    breakdown = MOCK_BREAKDOWN,
+    breakdown = [],
     loading = false,
     error = null,
     onRetry,
@@ -88,7 +68,7 @@ export default function CategoryBreakdown({
  * the same reason {@link StatTile} is: on screen the relationship is carried by
  * position, and the description list is what carries it to assistive tech.
  *
- * @param {typeof MOCK_BREAKDOWN[number]} props
+ * @param {{ category: string, count: number, total_amount: number }} props
  */
 function CategoryRow({ category, count, total_amount: totalAmount }) {
     return (

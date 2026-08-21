@@ -7,90 +7,6 @@ import ErrorState from './ui/ErrorState';
 import Select from './ui/Select';
 import { ArrowDownIcon, ArrowUpIcon, FlagIcon, SortIcon } from './ui/icons';
 
-/**
- * Stands in until the listing hook lands. Rows are keyed exactly like the
- * `data` array of the `GET /api/transactions` response, so wiring the real page
- * up is a matter of passing `transactions` — the markup below never changes.
- *
- * Twelve pages of twenty matches the 237 transactions in the `SummaryTiles`
- * mock, so every panel on the dashboard tells the same story while all of them
- * are running on mock data.
- */
-const MOCK_TRANSACTIONS = [
-    {
-        id: 1,
-        occurred_at: '2026-08-18T14:05:00Z',
-        merchant: 'Blue Bottle',
-        category: 'dining',
-        amount: 18.4,
-        status: 'completed',
-        flagged: false,
-    },
-    {
-        id: 2,
-        occurred_at: '2026-08-18T09:40:00Z',
-        merchant: 'Northgate Market',
-        category: 'groceries',
-        amount: 126.05,
-        status: 'pending',
-        flagged: true,
-    },
-    {
-        id: 3,
-        occurred_at: '2026-08-17T18:22:00Z',
-        merchant: 'City Transit',
-        category: 'travel',
-        amount: 2.75,
-        status: 'completed',
-        flagged: false,
-    },
-    {
-        id: 4,
-        occurred_at: '2026-08-16T11:00:00Z',
-        merchant: 'Volt Energy',
-        category: 'utilities',
-        amount: 212,
-        status: 'failed',
-        flagged: false,
-    },
-    {
-        id: 5,
-        occurred_at: '2026-08-15T16:31:00Z',
-        merchant: 'Rivera Hardware',
-        category: 'shopping',
-        amount: 64.9,
-        status: 'completed',
-        flagged: false,
-    },
-    {
-        id: 6,
-        occurred_at: '2026-08-15T10:12:00Z',
-        merchant: 'Cedar Pharmacy',
-        category: 'health',
-        amount: 38.2,
-        status: 'completed',
-        flagged: false,
-    },
-    {
-        id: 7,
-        occurred_at: '2026-08-14T20:47:00Z',
-        merchant: 'Lumen Cinema',
-        category: 'entertainment',
-        amount: 24,
-        status: 'completed',
-        flagged: false,
-    },
-    {
-        id: 8,
-        occurred_at: '2026-08-14T08:05:00Z',
-        merchant: 'Harbor Coffee',
-        category: 'dining',
-        amount: 9.65,
-        status: 'completed',
-        flagged: false,
-    },
-];
-
 /** Mirrors `TransactionSort` — the two columns the listing endpoint can order by. */
 const DEFAULT_SORT = { column: 'occurred_at', direction: 'desc' };
 
@@ -121,14 +37,14 @@ const STATUS_VARIANTS = {
 };
 
 /**
- * The transactions themselves, one row each, above a pagination footer.
+ * The transactions themselves, one row each, above a pagination footer. Rows are
+ * keyed like the `data` array of the `GET /api/transactions` response, and
+ * `page`/`pageCount`/`perPage` come from its `meta`.
  *
- * Display only for now: the sort headers, the flag toggles and the page size
- * select are rendered in their final form but carry no handlers, so the markup
- * does not have to change when the listing hook lands:
- *
- *     <TransactionsTable transactions={page.data} loading={page.loading} sort={sort}
- *                        page={meta.current_page} pageCount={meta.last_page} perPage={meta.per_page} />
+ * The sort headers, the flag toggles and the page size select are rendered in
+ * their final form but carry no handlers yet, so the markup will not have to
+ * change when those land. `sort` defaults to what the endpoint sorts by when it
+ * is not asked, so the headers describe the page actually being shown.
  *
  * The rows scroll at a fixed height instead of growing the card, which keeps the
  * dashboard the same size whatever the filters match — and keeps the footer in
@@ -137,16 +53,18 @@ const STATUS_VARIANTS = {
  * A failed request takes over the scrolling area: the headers go with the rows,
  * because sorting a page that never arrived is not something to offer.
  *
- * @param {{ transactions?: typeof MOCK_TRANSACTIONS, loading?: boolean, error?: string|boolean, onRetry?: () => void, sort?: typeof DEFAULT_SORT, page?: number, pageCount?: number, perPage?: number, className?: string }} props
+ * @param {{ transactions?: Array<object>, loading?: boolean, error?: string|boolean, onRetry?: () => void, onPageChange?: (page: number) => void, onPerPageChange?: (perPage: number) => void, sort?: typeof DEFAULT_SORT, page?: number, pageCount?: number, perPage?: number, className?: string }} props
  */
 export default function TransactionsTable({
-    transactions = MOCK_TRANSACTIONS,
+    transactions = [],
     loading = false,
     error = null,
     onRetry,
+    onPageChange,
+    onPerPageChange,
     sort = DEFAULT_SORT,
     page = 1,
-    pageCount = 12,
+    pageCount = 1,
     perPage = 20,
     className,
 }) {
@@ -201,7 +119,14 @@ export default function TransactionsTable({
                 )}
             </div>
 
-            <TableFooter page={page} pageCount={pageCount} perPage={perPage} error={error} />
+            <TableFooter
+                page={page}
+                pageCount={pageCount}
+                perPage={perPage}
+                error={error}
+                onPageChange={onPageChange}
+                onPerPageChange={onPerPageChange}
+            />
         </Card>
     );
 }
@@ -250,7 +175,7 @@ function SortableHeader({ label, column, sort, align = 'left' }) {
  * A single transaction. The merchant carries the weight because it is what the
  * eye scans for; everything else is set back so the column reads as one line.
  *
- * @param {typeof MOCK_TRANSACTIONS[number]} props
+ * @param {{ occurred_at: string, merchant: string, category: string, amount: number, status: string, flagged: boolean }} props
  */
 function TransactionRow({ occurred_at: occurredAt, merchant, category, amount, status, flagged }) {
     return (
@@ -319,9 +244,13 @@ function TableSkeleton() {
  * footer keeps its shape on the first and last page — and on a failed request,
  * where every control is disabled because there is no page to move around in.
  *
- * @param {{ page: number, pageCount: number, perPage: number, error?: string|boolean }} props
+ * The figures are real from the first response, but the controls that would act
+ * on them are not wired yet, so each also disables while its handler is absent
+ * rather than inviting a click that does nothing.
+ *
+ * @param {{ page: number, pageCount: number, perPage: number, error?: string|boolean, onPageChange?: (page: number) => void, onPerPageChange?: (perPage: number) => void }} props
  */
-function TableFooter({ page, pageCount, perPage, error }) {
+function TableFooter({ page, pageCount, perPage, error, onPageChange, onPerPageChange }) {
     return (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 px-4 py-3">
             <div className="flex items-center gap-3">
@@ -333,7 +262,7 @@ function TableFooter({ page, pageCount, perPage, error }) {
                     id="rows-per-page"
                     options={PER_PAGE_OPTIONS}
                     defaultValue={String(perPage)}
-                    disabled={Boolean(error)}
+                    disabled={Boolean(error) || !onPerPageChange}
                     className="w-auto py-1 pr-8 pl-2.5"
                 />
                 <p className="text-sm text-gray-500">
@@ -343,13 +272,17 @@ function TableFooter({ page, pageCount, perPage, error }) {
 
             {/* TODO: step the page through `onPageChange` when pagination lands. */}
             <div className="flex gap-2">
-                <Button variant="secondary" className="px-3 py-1.5" disabled={Boolean(error) || page <= 1}>
+                <Button
+                    variant="secondary"
+                    className="px-3 py-1.5"
+                    disabled={Boolean(error) || !onPageChange || page <= 1}
+                >
                     Previous
                 </Button>
                 <Button
                     variant="secondary"
                     className="px-3 py-1.5"
-                    disabled={Boolean(error) || page >= pageCount}
+                    disabled={Boolean(error) || !onPageChange || page >= pageCount}
                 >
                     Next
                 </Button>
