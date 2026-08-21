@@ -6,7 +6,9 @@ use App\DTOs\TransactionFilters;
 use App\DTOs\TransactionSort;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexTransactionRequest;
+use App\Http\Requests\TransactionFilterRequest;
 use App\Http\Resources\Api\TransactionResource;
+use App\Http\Resources\Api\TransactionSummaryResource;
 use App\Services\TransactionService;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -28,5 +30,18 @@ class TransactionController extends Controller
         );
 
         return TransactionResource::collection($transactions);
+    }
+
+    /**
+     * Summary figures for the transactions matching the same filters the
+     * listing accepts, aggregated in the database.
+     */
+    public function summary(TransactionFilterRequest $request): TransactionSummaryResource
+    {
+        $summary = $this->transactions->summary(
+            filters: TransactionFilters::fromArray($request->validated()),
+        );
+
+        return new TransactionSummaryResource($summary);
     }
 }

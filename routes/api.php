@@ -8,4 +8,6 @@ use Illuminate\Support\Facades\Route;
 // Add your transaction endpoints below.
 Route::get('/categories', CategoryController::class);
 
+// Declared before any `/transactions/{id}` route so the literal segment wins.
+Route::get('/transactions/summary', [TransactionController::class, 'summary']);
 Route::get('/transactions', [TransactionController::class, 'index']);
