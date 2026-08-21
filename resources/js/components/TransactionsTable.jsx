@@ -10,9 +10,12 @@ import { ArrowDownIcon, ArrowUpIcon, FlagIcon, SortIcon } from './ui/icons';
 /** Mirrors `TransactionSort` — the two columns the listing endpoint can order by. */
 export const DEFAULT_SORT = { column: 'occurred_at', direction: 'desc' };
 
+/** Mirrors `IndexTransactionRequest::DEFAULT_PER_PAGE` — what the endpoint pages by unasked. */
+export const DEFAULT_PER_PAGE = 20;
+
 /** Mirrors `IndexTransactionRequest::MAX_PER_PAGE`, which caps the page size at 100. */
 const PER_PAGE_OPTIONS = [
-    { value: '20', label: '20' },
+    { value: String(DEFAULT_PER_PAGE), label: String(DEFAULT_PER_PAGE) },
     { value: '50', label: '50' },
     { value: '100', label: '100' },
 ];
@@ -41,11 +44,12 @@ const STATUS_VARIANTS = {
  * keyed like the `data` array of the `GET /api/transactions` response, and
  * `page`/`pageCount`/`perPage` come from its `meta`.
  *
- * The sort headers act, through `onSortChange`. The flag toggles and the page
- * size select are still rendered in their final form but carry no handlers yet,
- * so the markup will not have to change when those land. `sort` defaults to what
- * the endpoint sorts by when it is not asked, so the headers describe the page
- * actually being shown.
+ * The sort headers act through `onSortChange`, and the footer controls through
+ * `onPageChange` and `onPerPageChange`. The flag toggles are still rendered in
+ * their final form but carry no handler yet, so the markup will not have to
+ * change when that lands. `sort`, `page` and `perPage` default to what the
+ * endpoint does when it is not asked, so the chrome describes the page actually
+ * being shown.
  *
  * The rows scroll at a fixed height instead of growing the card, which keeps the
  * dashboard the same size whatever the filters match — and keeps the footer in
@@ -67,7 +71,7 @@ export default function TransactionsTable({
     sort = DEFAULT_SORT,
     page = 1,
     pageCount = 1,
-    perPage = 20,
+    perPage = DEFAULT_PER_PAGE,
     className,
 }) {
     return (
@@ -136,6 +140,7 @@ export default function TransactionsTable({
                 page={page}
                 pageCount={pageCount}
                 perPage={perPage}
+                loading={loading}
                 error={error}
                 onPageChange={onPageChange}
                 onPerPageChange={onPerPageChange}
@@ -265,25 +270,25 @@ function TableSkeleton() {
  * footer keeps its shape on the first and last page — and on a failed request,
  * where every control is disabled because there is no page to move around in.
  *
- * The figures are real from the first response, but the controls that would act
- * on them are not wired yet, so each also disables while its handler is absent
+ * Everything also disables while a page is loading, so a second click cannot
+ * step past the response still on its way, and while its handler is absent
  * rather than inviting a click that does nothing.
  *
- * @param {{ page: number, pageCount: number, perPage: number, error?: string|boolean, onPageChange?: (page: number) => void, onPerPageChange?: (perPage: number) => void }} props
+ * @param {{ page: number, pageCount: number, perPage: number, loading?: boolean, error?: string|boolean, onPageChange?: (page: number) => void, onPerPageChange?: (perPage: number) => void }} props
  */
-function TableFooter({ page, pageCount, perPage, error, onPageChange, onPerPageChange }) {
+function TableFooter({ page, pageCount, perPage, loading, error, onPageChange, onPerPageChange }) {
     return (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 px-4 py-3">
             <div className="flex items-center gap-3">
                 <label htmlFor="rows-per-page" className="text-sm text-gray-500">
                     Rows per page
                 </label>
-                {/* TODO: reset to page 1 and refetch through `onPerPageChange`; `defaultValue` until then. */}
                 <Select
                     id="rows-per-page"
                     options={PER_PAGE_OPTIONS}
-                    defaultValue={String(perPage)}
-                    disabled={Boolean(error) || !onPerPageChange}
+                    value={String(perPage)}
+                    onChange={(event) => onPerPageChange?.(Number(event.target.value))}
+                    disabled={loading || Boolean(error) || !onPerPageChange}
                     className="w-auto py-1 pr-8 pl-2.5"
                 />
                 <p className="text-sm text-gray-500">
@@ -291,19 +296,20 @@ function TableFooter({ page, pageCount, perPage, error, onPageChange, onPerPageC
                 </p>
             </div>
 
-            {/* TODO: step the page through `onPageChange` when pagination lands. */}
             <div className="flex gap-2">
                 <Button
                     variant="secondary"
                     className="px-3 py-1.5"
-                    disabled={Boolean(error) || !onPageChange || page <= 1}
+                    onClick={() => onPageChange?.(page - 1)}
+                    disabled={loading || Boolean(error) || !onPageChange || page <= 1}
                 >
                     Previous
                 </Button>
                 <Button
                     variant="secondary"
                     className="px-3 py-1.5"
-                    disabled={Boolean(error) || !onPageChange || page >= pageCount}
+                    onClick={() => onPageChange?.(page + 1)}
+                    disabled={loading || Boolean(error) || !onPageChange || page >= pageCount}
                 >
                     Next
                 </Button>
