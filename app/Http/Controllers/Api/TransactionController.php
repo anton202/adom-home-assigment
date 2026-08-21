@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\DTOs\TransactionFilters;
 use App\DTOs\TransactionSort;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\FlagTransactionRequest;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\TransactionFilterRequest;
 use App\Http\Resources\Api\TransactionResource;
@@ -43,5 +44,15 @@ class TransactionController extends Controller
         );
 
         return new TransactionSummaryResource($summary);
+    }
+
+    /**
+     * Set the flag on a single transaction.
+     */
+    public function flag(FlagTransactionRequest $request, int $id): TransactionResource
+    {
+        return new TransactionResource(
+            $this->transactions->setFlagged($id, $request->flagged()),
+        );
     }
 }

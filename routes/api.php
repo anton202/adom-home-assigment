@@ -11,3 +11,4 @@ Route::get('/categories', CategoryController::class);
 // Declared before any `/transactions/{id}` route so the literal segment wins.
 Route::get('/transactions/summary', [TransactionController::class, 'summary']);
 Route::get('/transactions', [TransactionController::class, 'index']);
+Route::patch('/transactions/{id}/flag', [TransactionController::class, 'flag'])->whereNumber('id');
