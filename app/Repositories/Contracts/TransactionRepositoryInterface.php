@@ -17,4 +17,19 @@ interface TransactionRepositoryInterface
         TransactionSort $sort,
         int $perPage,
     ): LengthAwarePaginator;
+
+    /**
+     * The overall figures for the matching transactions.
+     *
+     * @return array{count: int, total_amount: float}
+     */
+    public function totals(TransactionFilters $filters): array;
+
+    /**
+     * The same figures broken down per category, keyed by category. Only the
+     * categories actually present in the matching rows are returned.
+     *
+     * @return array<string, array{count: int, total_amount: float}>
+     */
+    public function totalsByCategory(TransactionFilters $filters): array;
 }

@@ -3,36 +3,24 @@
 namespace App\Http\Requests;
 
 use App\DTOs\TransactionSort;
-use App\Models\Transaction;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class IndexTransactionRequest extends FormRequest
+class IndexTransactionRequest extends TransactionFilterRequest
 {
     public const DEFAULT_PER_PAGE = 20;
 
     public const MAX_PER_PAGE = 100;
 
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     /**
-     * Every parameter is optional, but an unrecognised value is rejected rather
-     * than silently dropped. The `string` rules also keep array input
-     * (`?category[]=travel`) from reaching the query builder.
+     * The shared filters, plus the sorting and pagination parameters that only
+     * the listing endpoint understands.
      *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
         return [
-            'date_from' => ['nullable', 'date_format:Y-m-d'],
-            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
-            'category' => ['nullable', 'string', Rule::in(Transaction::CATEGORIES)],
-            'status' => ['nullable', 'string', Rule::in(Transaction::STATUSES)],
-            'search' => ['nullable', 'string', 'max:255'],
+            ...parent::rules(),
             'sort' => ['nullable', 'string', Rule::in(TransactionSort::COLUMNS)],
             'direction' => ['nullable', 'string', Rule::in(TransactionSort::DIRECTIONS)],
             'page' => ['nullable', 'integer', 'min:1'],
