@@ -1,6 +1,7 @@
 import { cn } from '../lib/cn';
 import { formatCategory, formatCount, formatCurrency } from '../lib/format';
 import Card from './ui/Card';
+import ErrorState from './ui/ErrorState';
 
 /**
  * Stands in until the summary hook lands. Keyed exactly like the `by_category`
@@ -39,21 +40,35 @@ const SKELETON_ROWS = 6;
  *
  *     <CategoryBreakdown breakdown={summary.by_category} loading={summary.loading} />
  *
- * @param {{ breakdown?: typeof MOCK_BREAKDOWN, loading?: boolean, className?: string }} props
+ * This panel carries the retry for the summary request. The tiles above it are
+ * fed by the same endpoint, so putting a Retry button on each of them would ask
+ * the user to choose between three buttons that all do the same thing.
+ *
+ * @param {{ breakdown?: typeof MOCK_BREAKDOWN, loading?: boolean, error?: string|boolean, onRetry?: () => void, className?: string }} props
  */
 export default function CategoryBreakdown({
     breakdown = MOCK_BREAKDOWN,
     loading = false,
+    error = null,
+    onRetry,
     className,
 }) {
     const rows = [...breakdown].sort((a, b) => b.total_amount - a.total_amount);
 
     return (
-        <Card className={className} aria-busy={loading || undefined}>
+        <Card className={className} aria-busy={(loading && !error) || undefined}>
             <h2 className="text-base font-semibold text-gray-900">Category breakdown</h2>
             <p className="mt-0.5 text-sm text-gray-500">Totals for the applied filters</p>
 
-            {loading ? (
+            {error ? (
+                <div className={cn('mt-3', LIST_HEIGHT)}>
+                    <ErrorState
+                        title="Couldn't load the breakdown"
+                        message={error}
+                        onRetry={onRetry}
+                    />
+                </div>
+            ) : loading ? (
                 <CategorySkeleton />
             ) : rows.length === 0 ? (
                 <p className="mt-3 py-2 text-sm text-gray-500">No categories match these filters.</p>

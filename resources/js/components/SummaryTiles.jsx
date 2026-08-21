@@ -16,20 +16,31 @@ const MOCK_SUMMARY = {
  * The headline figures for the transactions matching the applied filters. Two
  * tiles side by side from `sm` up, stacked below it.
  *
- * @param {{ summary?: typeof MOCK_SUMMARY, loading?: boolean, className?: string }} props
+ * The `error` the summary request failed with is handed to both tiles, since one
+ * request is behind both figures. The retry for it lives on `CategoryBreakdown`,
+ * which is fed by the same endpoint.
+ *
+ * @param {{ summary?: typeof MOCK_SUMMARY, loading?: boolean, error?: string|boolean, className?: string }} props
  */
-export default function SummaryTiles({ summary = MOCK_SUMMARY, loading = false, className }) {
+export default function SummaryTiles({
+    summary = MOCK_SUMMARY,
+    loading = false,
+    error = null,
+    className,
+}) {
     return (
         <div className={cn('grid gap-4 sm:grid-cols-2', className)}>
             <StatTile
                 label="Total transactions"
                 value={formatCount(summary.total_count)}
                 loading={loading}
+                error={error}
             />
             <StatTile
                 label="Total amount"
                 value={formatCurrency(summary.total_amount)}
                 loading={loading}
+                error={error}
             />
         </div>
     );

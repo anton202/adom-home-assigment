@@ -3,6 +3,7 @@ import { formatCategory, formatCount, formatCurrency, formatDate } from '../lib/
 import Badge from './ui/Badge';
 import Button from './ui/Button';
 import Card from './ui/Card';
+import ErrorState from './ui/ErrorState';
 import Select from './ui/Select';
 import { ArrowDownIcon, ArrowUpIcon, FlagIcon, SortIcon } from './ui/icons';
 
@@ -133,11 +134,16 @@ const STATUS_VARIANTS = {
  * dashboard the same size whatever the filters match — and keeps the footer in
  * one place rather than sliding up the page as rows drop out.
  *
- * @param {{ transactions?: typeof MOCK_TRANSACTIONS, loading?: boolean, sort?: typeof DEFAULT_SORT, page?: number, pageCount?: number, perPage?: number, className?: string }} props
+ * A failed request takes over the scrolling area: the headers go with the rows,
+ * because sorting a page that never arrived is not something to offer.
+ *
+ * @param {{ transactions?: typeof MOCK_TRANSACTIONS, loading?: boolean, error?: string|boolean, onRetry?: () => void, sort?: typeof DEFAULT_SORT, page?: number, pageCount?: number, perPage?: number, className?: string }} props
  */
 export default function TransactionsTable({
     transactions = MOCK_TRANSACTIONS,
     loading = false,
+    error = null,
+    onRetry,
     sort = DEFAULT_SORT,
     page = 1,
     pageCount = 12,
@@ -147,47 +153,55 @@ export default function TransactionsTable({
     return (
         <Card
             className={cn('flex min-w-0 flex-col overflow-hidden p-0', className)}
-            aria-busy={loading || undefined}
+            aria-busy={(loading && !error) || undefined}
         >
             <div className={cn('overflow-auto', BODY_HEIGHT)}>
-                <table className="w-full text-left text-sm">
-                    <thead className="sticky top-0 z-10 bg-gray-50">
-                        <tr>
-                            <SortableHeader label="Date" column="occurred_at" sort={sort} />
-                            <th scope="col" className={cn(HEADER_CELL, 'w-full')}>
-                                Merchant
-                            </th>
-                            <th scope="col" className={HEADER_CELL}>
-                                Category
-                            </th>
-                            <SortableHeader label="Amount" column="amount" sort={sort} align="right" />
-                            <th scope="col" className={HEADER_CELL}>
-                                Status
-                            </th>
-                            <th scope="col" className={cn(HEADER_CELL, 'text-right')}>
-                                Flag
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {loading ? (
-                            <TableSkeleton />
-                        ) : transactions.length === 0 ? (
+                {error ? (
+                    <ErrorState
+                        title="Couldn't load transactions"
+                        message={error}
+                        onRetry={onRetry}
+                    />
+                ) : (
+                    <table className="w-full text-left text-sm">
+                        <thead className="sticky top-0 z-10 bg-gray-50">
                             <tr>
-                                <td colSpan={6} className="px-4 py-6 text-sm text-gray-500">
-                                    No transactions match these filters.
-                                </td>
+                                <SortableHeader label="Date" column="occurred_at" sort={sort} />
+                                <th scope="col" className={cn(HEADER_CELL, 'w-full')}>
+                                    Merchant
+                                </th>
+                                <th scope="col" className={HEADER_CELL}>
+                                    Category
+                                </th>
+                                <SortableHeader label="Amount" column="amount" sort={sort} align="right" />
+                                <th scope="col" className={HEADER_CELL}>
+                                    Status
+                                </th>
+                                <th scope="col" className={cn(HEADER_CELL, 'text-right')}>
+                                    Flag
+                                </th>
                             </tr>
-                        ) : (
-                            transactions.map((transaction) => (
-                                <TransactionRow key={transaction.id} {...transaction} />
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {loading ? (
+                                <TableSkeleton />
+                            ) : transactions.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-4 py-6 text-sm text-gray-500">
+                                        No transactions match these filters.
+                                    </td>
+                                </tr>
+                            ) : (
+                                transactions.map((transaction) => (
+                                    <TransactionRow key={transaction.id} {...transaction} />
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                )}
             </div>
 
-            <TableFooter page={page} pageCount={pageCount} perPage={perPage} />
+            <TableFooter page={page} pageCount={pageCount} perPage={perPage} error={error} />
         </Card>
     );
 }
@@ -302,11 +316,12 @@ function TableSkeleton() {
 /**
  * Page size and position on the left, the step controls on the right. The
  * buttons disable at the ends of the range rather than disappearing, so the
- * footer keeps its shape on the first and last page.
+ * footer keeps its shape on the first and last page — and on a failed request,
+ * where every control is disabled because there is no page to move around in.
  *
- * @param {{ page: number, pageCount: number, perPage: number }} props
+ * @param {{ page: number, pageCount: number, perPage: number, error?: string|boolean }} props
  */
-function TableFooter({ page, pageCount, perPage }) {
+function TableFooter({ page, pageCount, perPage, error }) {
     return (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 px-4 py-3">
             <div className="flex items-center gap-3">
@@ -318,6 +333,7 @@ function TableFooter({ page, pageCount, perPage }) {
                     id="rows-per-page"
                     options={PER_PAGE_OPTIONS}
                     defaultValue={String(perPage)}
+                    disabled={Boolean(error)}
                     className="w-auto py-1 pr-8 pl-2.5"
                 />
                 <p className="text-sm text-gray-500">
@@ -327,10 +343,14 @@ function TableFooter({ page, pageCount, perPage }) {
 
             {/* TODO: step the page through `onPageChange` when pagination lands. */}
             <div className="flex gap-2">
-                <Button variant="secondary" className="px-3 py-1.5" disabled={page <= 1}>
+                <Button variant="secondary" className="px-3 py-1.5" disabled={Boolean(error) || page <= 1}>
                     Previous
                 </Button>
-                <Button variant="secondary" className="px-3 py-1.5" disabled={page >= pageCount}>
+                <Button
+                    variant="secondary"
+                    className="px-3 py-1.5"
+                    disabled={Boolean(error) || page >= pageCount}
+                >
                     Next
                 </Button>
             </div>
