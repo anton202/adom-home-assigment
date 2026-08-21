@@ -9,6 +9,7 @@ use App\DTOs\TransactionSummary;
 use App\Models\Transaction;
 use App\Repositories\Contracts\TransactionRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class TransactionService
 {
@@ -51,5 +52,15 @@ class TransactionService
                 $categories,
             ),
         );
+    }
+
+    /**
+     * Set the flag on a single transaction and return the updated record.
+     *
+     * @throws ModelNotFoundException<Transaction>
+     */
+    public function setFlagged(int $id, bool $flagged): Transaction
+    {
+        return $this->transactions->setFlagged($id, $flagged);
     }
 }

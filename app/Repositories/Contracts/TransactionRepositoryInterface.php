@@ -6,6 +6,7 @@ use App\DTOs\TransactionFilters;
 use App\DTOs\TransactionSort;
 use App\Models\Transaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 interface TransactionRepositoryInterface
 {
@@ -32,4 +33,11 @@ interface TransactionRepositoryInterface
      * @return array<string, array{count: int, total_amount: float}>
      */
     public function totalsByCategory(TransactionFilters $filters): array;
+
+    /**
+     * Set the flag on a single transaction and return the updated record.
+     *
+     * @throws ModelNotFoundException<Transaction>
+     */
+    public function setFlagged(int $id, bool $flagged): Transaction;
 }

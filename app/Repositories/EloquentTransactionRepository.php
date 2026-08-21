@@ -71,6 +71,16 @@ class EloquentTransactionRepository implements TransactionRepositoryInterface
         return $totals;
     }
 
+    public function setFlagged(int $id, bool $flagged): Transaction
+    {
+        $transaction = Transaction::query()->findOrFail($id);
+
+        $transaction->flagged = $flagged;
+        $transaction->save();
+
+        return $transaction;
+    }
+
     /**
      * Filtering happens entirely in the database and is shared by every
      * transaction listing endpoint.
