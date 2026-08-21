@@ -1,3 +1,4 @@
+import CategoryBreakdown from './CategoryBreakdown';
 import FiltersPanel from './FiltersPanel';
 import SummaryTiles from './SummaryTiles';
 
@@ -8,6 +9,7 @@ export default function App() {
             <div className="mt-6 flex flex-col gap-6">
                 <SummaryTiles className="max-w-2xl" />
                 <FiltersPanel className="max-w-sm" />
+                <CategoryBreakdown className="max-w-sm" />
             </div>
         </div>
     );

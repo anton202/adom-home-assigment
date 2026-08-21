@@ -28,3 +28,13 @@ export function formatCurrency(amount) {
 export function formatCount(count) {
     return COUNT.format(count);
 }
+
+/**
+ * A bare category slug as a label, e.g. `groceries` → `Groceries`.
+ *
+ * @param {string} category
+ * @returns {string}
+ */
+export function formatCategory(category) {
+    return category.charAt(0).toUpperCase() + category.slice(1);
+}

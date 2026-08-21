@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { formatCategory } from '../lib/format';
 
 /**
  * The categories present in the data, ready to hand to a `Select`.
@@ -50,6 +51,6 @@ export function useCategories() {
 function toOption(category) {
     return {
         value: category,
-        label: category.charAt(0).toUpperCase() + category.slice(1),
+        label: formatCategory(category),
     };
 }
